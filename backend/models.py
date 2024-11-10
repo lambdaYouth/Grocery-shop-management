@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Enum, ForeignKey, DECIMAL
 from sqlalchemy.orm import relationship
+#from models import db //Check whether we should add this.
 import enum
 
 db = SQLAlchemy()

@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from models import db, init_db, Customer ,Admin ,Product # Import Customer for testing
+from models import db, init_db, Customer ,Admin ,Product,Shop # Import Customer for testing
 from config import Config
 from sqlalchemy import text
 from datetime import datetime
@@ -132,6 +132,47 @@ def add_product():
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
+
+@app.route('/api/shop', methods=['POST'])
+def add_shop():
+    data = request.get_json()
+    print("Incoming data:", data)
+
+    # Check for required fields in the request
+    required_fields = ['shop_name', 'shop_address', 'phone_number', 'email', 'adminName']
+    if not data or not all(key in data for key in required_fields):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    # Verify if the admin exists in the Admin table based on adminName
+    admin = Admin.query.filter_by(name=data['adminName']).first()
+    if not admin:
+        return jsonify({"error": "Admin not found"}), 404
+
+    print(f"Admin ID for {data['adminName']} is {admin.admin_id}")
+    print(datetime.now())
+
+    try:
+        # Insert the shop using SQLAlchemy
+        db.session.execute(
+            text('INSERT INTO shops_1 (shop_name, shop_address, phone_number, email, owner_name, admin_id) VALUES (:shop_name, :shop_address, :phone_number, :email, :owner_name, :admin_id)'),
+            {
+                'shop_name': data['shop_name'],
+                'shop_address': data.get('shop_address', ''),
+                'phone_number': data.get('phone_number', ''),
+                'email': data.get('email', ''),
+                'owner_name': admin.name,
+                'admin_id': admin.admin_id  # Use the admin_id of the found admin
+            }
+        )
+
+        db.session.commit()
+        return jsonify({"message": "Shop added successfully"}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding shop: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+    
 @app.route('/api/product_display',methods = ['GET'])
 def get_products():
     try:
@@ -149,6 +190,29 @@ def get_products():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/shop_display', methods=['GET'])
+def get_shops():
+    try:
+        shops = db.session.execute(
+            text("SELECT shop_id, shop_name, shop_address, phone_number, email, owner_name FROM shops_1")
+        )
+        shops_list = [{
+            'shop_id': shop.shop_id,
+            'shop_name': shop.shop_name,
+            'shop_address': shop.shop_address,
+            'phone_number': shop.phone_number,
+            'email': shop.email,
+            'owner_name': shop.owner_name
+        } for shop in shops]
+        
+        return jsonify({
+            'shops': shops_list
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 # Run the app
 if __name__ == '__main__':
